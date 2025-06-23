@@ -1,0 +1,157 @@
+<!--LEGAL-DNA:{"jurisdiction":"US/MN/Baxter","export_tag":"EAR99","spdx":"MIT","artifact_time":1750657957850,"def_pub":"OIN","consent_req":true,"city":"Baxter"}-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Secure Site Stream Client – Shroomtop420™</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="theme-color" content="#181c20"/>
+  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;Secure Site Stream&quot;,&quot;short_name&quot;:&quot;SiteStream&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#181c20&quot;,&quot;theme_color&quot;:&quot;#181c20&quot;}" />
+  <script>
+    // Minimal PWA installer, offline shell scaffold
+    if ('serviceWorker' in navigator) {window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: radial-gradient(ellipse at 50% 25%, #1e2631 80%, #090d13 100%); }
+    .glass { background: rgba(28,36,46,0.68); box-shadow: 0 8px 32px 0 rgba(9,13,19,0.37); backdrop-filter: blur(14px) saturate(180%); border-radius: 2rem; border: 2px solid rgba(70,90,120,0.12);}
+    .glass-2 { background: rgba(60,70,90,0.24); box-shadow: 0 4px 12px 0 rgba(9,13,19,0.13); backdrop-filter: blur(6px) saturate(160%); border-radius: 1rem; border: 1.5px solid rgba(200,220,255,0.12);}
+    ::selection { background: #54c6ff44;}
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center text-slate-200 font-sans select-none">
+  <main class="w-full max-w-md mx-auto mt-10 px-3">
+    <section class="glass px-6 py-8 flex flex-col items-center shadow-xl">
+      <svg width="70" height="70" viewBox="0 0 70 70" fill="none" class="mb-2">
+        <ellipse cx="35" cy="35" rx="32" ry="32" fill="#25304A" opacity="0.5"/>
+        <rect x="18" y="22" width="34" height="26" rx="6" fill="#0ea5e9" fill-opacity="0.45"/>
+        <rect x="27" y="36" width="16" height="4" rx="2" fill="#fff" fill-opacity="0.35"/>
+        <rect x="32" y="42" width="6" height="2" rx="1" fill="#fff" fill-opacity="0.27"/>
+        <circle cx="35" cy="27" r="3" fill="#fff" fill-opacity="0.12"/>
+      </svg>
+      <h1 class="text-2xl font-extrabold tracking-tight text-sky-300 mb-1 text-center">Secure Site Video Stream</h1>
+      <div class="text-slate-400 mb-4 text-center text-base">You are viewing a live, interactive video feed of a secure app. No code or logic is exposed—just pixels. All input is routed securely to the backend.</div>
+      <video id="video" class="glass-2 mb-4 w-full aspect-video rounded-2xl border border-slate-600 shadow-lg" autoplay playsinline muted></video>
+      <div class="flex gap-2 w-full mb-3">
+        <button id="connectBtn" class="flex-1 bg-sky-700 hover:bg-sky-600 transition rounded-xl px-4 py-2 font-bold shadow">Connect</button>
+        <button id="fsBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition shadow border border-slate-700">Fullscreen</button>
+      </div>
+      <div class="w-full text-xs text-slate-500 text-center mb-2">Shroomtop420™ | No code delivered. Only pixels.</div>
+      <div class="w-full flex flex-col items-center">
+        <div id="status" class="text-sky-300 font-bold">Not connected</div>
+        <div id="error" class="text-rose-400 mt-1"></div>
+      </div>
+    </section>
+    <section class="mt-8 p-4 glass-2 rounded-lg text-xs text-slate-400">
+      <b>How it works:</b>  
+      <ul class="list-disc list-inside mt-1">
+        <li>Your device connects via WebRTC (peer-to-peer or via TURN).</li>
+        <li>You see a real-time video feed (no site code, no DOM).</li>
+        <li>All mouse and keyboard actions are securely streamed to the backend.</li>
+        <li>All processing, data, and logic remain server-side.</li>
+        <li>This frontend can be deployed offline (PWA scaffold), but requires backend for live streams.</li>
+      </ul>
+    </section>
+  </main>
+  <script>
+    // CONFIGURATION: replace with your WebRTC signaling server URI
+    const SIGNAL_SERVER = "wss://your-signal-server.com/ws"; // <-- set this to your signaling backend!
+    let pc, ws, dataChannel;
+
+    // Video streaming logic (WebRTC)
+    async function connectStream() {
+      document.getElementById('status').textContent = "Connecting...";
+      document.getElementById('error').textContent = "";
+      try {
+        ws = new WebSocket(SIGNAL_SERVER);
+        ws.onmessage = async (event) => {
+          let msg = JSON.parse(event.data);
+          if (msg.sdp) {
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+            if (msg.sdp.type === 'offer') {
+              let answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              ws.send(JSON.stringify({ sdp: pc.localDescription }));
+            }
+          } else if (msg.ice) {
+            await pc.addIceCandidate(msg.ice);
+          }
+        };
+        ws.onopen = startWebRTC;
+        ws.onerror = (e) => { document.getElementById('error').textContent = "Signal server error!"; };
+      } catch (e) {
+        document.getElementById('error').textContent = "WebSocket error: " + e.message;
+      }
+    }
+
+    function startWebRTC() {
+      pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      pc.ontrack = (event) => {
+        let video = document.getElementById('video');
+        if (video.srcObject !== event.streams[0]) {
+          video.srcObject = event.streams[0];
+        }
+        document.getElementById('status').textContent = "Connected";
+      };
+      pc.onicecandidate = (event) => {
+        if (event.candidate) ws.send(JSON.stringify({ ice: event.candidate }));
+      };
+      dataChannel = pc.createDataChannel("input");
+      dataChannel.onopen = () => { document.getElementById('status').textContent = "Streaming & Input Ready"; };
+      // Initiate offer for this peer
+      pc.createOffer().then(offer => pc.setLocalDescription(offer))
+        .then(() => ws.send(JSON.stringify({ sdp: pc.localDescription })));
+    }
+
+    // Capture and send all mouse/keyboard events to backend
+    function sendInput(type, payload) {
+      if (dataChannel && dataChannel.readyState === "open") {
+        dataChannel.send(JSON.stringify({ type, payload }));
+      }
+    }
+    // Video/mouse event handlers
+    const video = document.getElementById('video');
+    video.addEventListener('mousemove', e => {
+      const rect = video.getBoundingClientRect();
+      sendInput('mousemove', {
+        x: (e.clientX - rect.left) / rect.width,
+        y: (e.clientY - rect.top) / rect.height,
+        buttons: e.buttons
+      });
+    });
+    video.addEventListener('mousedown', e => sendInput('mousedown', { button: e.button }));
+    video.addEventListener('mouseup', e => sendInput('mouseup', { button: e.button }));
+    video.addEventListener('click', e => sendInput('click', { button: e.button }));
+    video.addEventListener('dblclick', e => sendInput('dblclick', { button: e.button }));
+    video.addEventListener('wheel', e => sendInput('wheel', { delta: e.deltaY }));
+
+    window.addEventListener('keydown', e => sendInput('keydown', { key: e.key, code: e.code, ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey }));
+    window.addEventListener('keyup', e => sendInput('keyup', { key: e.key, code: e.code }));
+
+    // Fullscreen button
+    document.getElementById('fsBtn').onclick = () => {
+      let vid = document.getElementById('video');
+      if (vid.requestFullscreen) vid.requestFullscreen();
+      else if (vid.webkitRequestFullscreen) vid.webkitRequestFullscreen();
+      else if (vid.msRequestFullscreen) vid.msRequestFullscreen();
+    };
+
+    // Connect button
+    document.getElementById('connectBtn').onclick = connectStream;
+
+    // PWA IndexedDB stub (for expansion, e.g., audit log, state cache)
+    window.indexedDB && window.indexedDB.open('streamclient', 1);
+
+    // Service worker (inline, for offline shell)
+    if (!navigator.serviceWorker.controller) {
+      const sw = `
+        self.addEventListener('fetch',()=>{});
+        self.addEventListener('install',e=>{self.skipWaiting();});
+        self.addEventListener('activate',e=>{self.clients.claim();});
+      `;
+      const blob = new Blob([sw], {type: 'application/javascript'});
+      navigator.serviceWorker.register(URL.createObjectURL(blob));
+    }
+  </script>
+</body>
+</html>
